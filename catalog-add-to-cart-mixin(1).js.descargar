@@ -1,0 +1,200 @@
+define(
+    [
+        'jquery',
+        'Magento_Catalog/js/product/view/product-ids-resolver'
+    ],
+    function ($, idsResolver) {
+        'use strict';
+
+        var ajaxSubmitWidgetMixin = {
+            selectReference: {
+                sku: '',
+                inputReference: '',
+                increase: '.mas-action',
+                decrease: '.menos-action',
+                currentInputQty: '.current-qty'
+            },
+            _create: function () {
+                this._super();
+                var currentElement = this.element;
+                let min_qty = currentElement.find('.product-min-qty').val();
+                let qty_steps = parseFloat(currentElement.find('.product-qty-steps').val());
+                let item_id = currentElement.find('.product-item-id').val();
+                let grid_count = $('#count-grid-'+item_id).val();
+                let qtyValue = '#qty-box-grid-' + item_id;
+                let priceBox = '#price-box-grid-' + item_id;
+                let isPza = currentElement.find('.product-presentation').val() == 'Pza';
+
+                currentElement.find(this.selectReference.increase).on('click', function (event) {
+
+                    event.stopPropagation();
+
+                    let qty = isPza ? currentElement.find('.current-qty').val() : parseFloat(currentElement.find('.current-qty').val());
+
+                    if (!qty){
+
+                        qty = isPza ? min_qty : parseFloat(min_qty);
+                    }
+
+                    let currentQty = isPza ? (parseInt(qty) + parseInt(qty_steps)) : (qty + parseFloat(qty_steps));
+
+
+                    if (isPza){
+
+                        currentElement.find('.current-qty').val(currentQty);
+                        currentElement.find('[name="qty"]').val(currentQty);
+
+                    }else {
+
+                        currentElement.find('.current-qty').val(currentQty.toFixed(3));
+                        currentElement.find('[name="qty"]').val(currentQty.toFixed(3));
+                    }
+
+
+                    for (let i = 0; i < (grid_count + 1); i++ ){
+
+                        $(priceBox+ '-' + i).hide();
+
+                        let tier = $(qtyValue + '-' + i).val();
+
+                        if (currentQty >= tier){
+
+                            $(priceBox+ '-' + i).show();
+
+                            if (i > 0){ $(priceBox+ '-' + (i - 1)).hide(); }
+
+                        }
+
+
+                    }
+
+
+                });
+
+                currentElement.find(this.selectReference.decrease).on('click', function (event) {
+
+                    event.stopPropagation();
+
+                    let qty = isPza ? currentElement.find('.current-qty').val() : parseFloat(currentElement.find('.current-qty').val());
+                    var currentQty = 0;
+
+                    if (!qty){
+
+                        qty = isPza ? min_qty * 2: parseFloat(min_qty) * 2;
+                    }
+
+                    if (qty > min_qty) {
+
+                        currentQty = qty - qty_steps;
+
+                        if (isPza){
+
+                            currentElement.find('.current-qty').val(currentQty);
+                            currentElement.find('[name="qty"]').val(currentQty);
+
+                        }else {
+
+                            currentElement.find('.current-qty').val(currentQty.toFixed(3));
+                            currentElement.find('[name="qty"]').val(currentQty.toFixed(3));
+                        }
+                    }
+
+
+                    let lastTier = $(qtyValue + '-' + (grid_count)).val();
+                    let tierUno = $(qtyValue + '-' + 0).val();
+
+                    for (let i = 0; i < (grid_count + 1); i++ ){
+
+                        if (grid_count > 1){
+
+                            $(priceBox+ '-' + i).hide();
+                        }
+
+                    }
+
+                    for (let i = (grid_count + 1); i >= 0; i-- ){
+
+                        let tier = $(qtyValue + '-' + i).val();
+
+                        if (currentQty && (currentQty >= tier) ){
+
+                            $(priceBox+ '-' + i).show();
+
+                            break;
+                        }
+
+                        if (currentQty > lastTier){
+
+                            $(priceBox+ '-' + (grid_count - 1)).show();
+                        }
+
+                        if (!currentQty || (currentQty == min_qty) && ( parseFloat(tierUno) > parseFloat(min_qty))){
+
+                            $(priceBox+ '-' + 0).show();
+                        }
+
+                    }
+
+
+                });
+
+                currentElement.find('.current-qty').on('input', function (event) {
+
+                    event.stopPropagation();
+                    event.preventDefault();
+
+                    let inputQty = isPza ? currentElement.find('.current-qty').val() : parseFloat(currentElement.find('.current-qty').val());
+
+                    for (let i = 0; i < (grid_count + 1); i++ ){ $(priceBox+ '-' + i).hide(); }
+
+                    if (inputQty){
+
+                        for (let i = 0; i < (grid_count + 1); i++ ){
+
+                            let tier = $(qtyValue + '-' + i).val();
+
+                            if (parseInt(inputQty) >= parseInt(tier)){
+
+                                $(priceBox+ '-' + i).show();
+
+                                if (i > 0){
+
+                                    $(priceBox+ '-' + (i - 1)).hide();
+                                }
+
+                            }
+
+                        }
+                    }else {
+
+                        $(priceBox+ '-' + 0).show();
+                    }
+
+                    if (inputQty < 0){
+
+                        inputQty = inputQty * (-1);
+                        $(priceBox+ '-' + 0).show();
+                    }
+
+                    if (isPza){
+
+                        currentElement.find('.current-qty').val(inputQty);
+                        currentElement.find('[name="qty"]').val(inputQty);
+
+                    }else {
+
+                        currentElement.find('.current-qty').val(inputQty.toFixed(3));
+                        currentElement.find('[name="qty"]').val(inputQty.toFixed(3));
+                    }
+
+                });
+            }
+        };
+
+
+        return function (targetWidget) {
+            $.widget('mage.catalogAddToCart', targetWidget, ajaxSubmitWidgetMixin);
+
+            return $.mage.catalogAddToCart;
+        };
+    });
